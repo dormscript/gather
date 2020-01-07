@@ -3,12 +3,12 @@ const request = require('superagent');
 const vm = require('vm');
 const _ = require('lodash');
 const userAgent = require('../helper/useragent');
-const redis = require('../config/redis');
+//const redis = require('../config/redis');
 const config = require('../config/config');
 const {
   HUYA,
   TafHandler
-} = require('../helper/m.taf');
+} = require('../helper/tafv2');
 const Gift = require('../gather/lib/gift');
 const giftHelper = Gift.getInstance();
 
@@ -20,9 +20,12 @@ const PROFILE_REG = /var\s+TT_PROFILE_INFO\s+=\s*(.+?);/im;
 const GAMENAME_REG = /(var gameName\s*=\s*[\s\S]*?)<\/script>/i;
 const REQ_TIMEOUT = 6000;
 
+EventEmitter.defaultMaxListeners = 0;
+
 module.exports = class Huya extends EventEmitter {
   constructor(url = '') {
     super();
+    //this.setMaxListeners(500)
     this.agent = request.agent();
     this.socket = null;
     this.userId = null;
@@ -56,7 +59,7 @@ module.exports = class Huya extends EventEmitter {
     let parts = this.url.split('/');
     this.roomId = parts[parts.length - 1];
     let roomInfo;
-    roomInfo = await redis.get(`STR:REQ:ROOM_INFO:HUYA:${this.roomId}`);
+    //roomInfo = await redis.get(`STR:REQ:ROOM_INFO:HUYA:${this.roomId}`);
     if (!roomInfo) {
       let url = `${M_ROOMINFO_URL_PREFIX}${this.roomId}`;
       let res = await this.agent
@@ -76,7 +79,7 @@ module.exports = class Huya extends EventEmitter {
         throw new Error('parse error');
       }
       roomInfo = matches[1];
-      await redis.set(`STR:REQ:ROOM_INFO:HUYA:${this.roomId}`, roomInfo, 'EX', 60 * 60 * 24);
+      //await redis.set(`STR:REQ:ROOM_INFO:HUYA:${this.roomId}`, roomInfo, 'EX', 60 * 60 * 24);
     }
     let script = new vm.Script(roomInfo, {
       displayErrors: false,
@@ -96,8 +99,8 @@ module.exports = class Huya extends EventEmitter {
 
   async requestRoomDetail() {
     let roomDetail, roomPlayer;
-    roomDetail = await redis.get(`STR:REQ:ROOM_DETAIL:HUYA:${this.roomId}`);
-    roomPlayer = await redis.get(`STR:REQ:ROOM_PLAYER:HUYA:${this.roomId}`);
+    //roomDetail = await redis.get(`STR:REQ:ROOM_DETAIL:HUYA:${this.roomId}`);
+    //roomPlayer = await redis.get(`STR:REQ:ROOM_PLAYER:HUYA:${this.roomId}`);
     if (!roomDetail || !roomPlayer) {
       let url = `${PC_ROOMINFO_URL_PREFIX}${this.roomId}`;
       let res = await this.agent.get(url);
@@ -112,7 +115,7 @@ module.exports = class Huya extends EventEmitter {
       roomDetail = matches_info[1];
       try {
         roomDetail = JSON.parse(roomDetail);
-        await redis.set(`STR:REQ:ROOM_DETAIL:HUYA:${this.roomId}`, matches_info[1], 'EX', 60 * 60 * 24);
+        //await redis.set(`STR:REQ:ROOM_DETAIL:HUYA:${this.roomId}`, matches_info[1], 'EX', 60 * 60 * 24);
       } catch (e) {
         throw e;
       }
@@ -124,7 +127,7 @@ module.exports = class Huya extends EventEmitter {
       roomPlayer = matches_profile[1];
       try {
         roomPlayer = JSON.parse(roomPlayer);
-        await redis.set(`STR:REQ:ROOM_PLAYER:HUYA:${this.roomId}`, matches_profile[1], 'EX', 60 * 60 * 24);
+        //await redis.set(`STR:REQ:ROOM_PLAYER:HUYA:${this.roomId}`, matches_profile[1], 'EX', 60 * 60 * 24);
       } catch (e) {
         throw e;
       }
@@ -172,27 +175,54 @@ module.exports = class Huya extends EventEmitter {
     this.userId.sHuYaUA = 'webh5&1.0.0&websocket';
     this.userId.sCookie = '';
 
-    this.clientHeartBeat();
+    // this.clientHeartBeat();
 
-    clearInterval(this.keepAliveTimer);
-    this.keepAliveTimer = setInterval(this.clientHeartBeat.bind(this), 6e4);
+    // clearInterval(this.keepAliveTimer);
+    // this.keepAliveTimer = setInterval(this.clientHeartBeat.bind(this), 6e4);
 
     let liveLaunchReq = new HUYA.LiveLaunchReq();
     liveLaunchReq.tId = this.userId;
     liveLaunchReq.tLiveUB.eSource = HUYA.ELiveSource.WEB_HUYA;
     this.socket.sendWup('liveui', 'doLaunch', liveLaunchReq);
 
-    let propsListReq = new HUYA.GetPropsListReq();
-    propsListReq.tUserId = this.userId;
-    propsListReq.sMd5 = '';
-    if (this.isYanzhi) {
-      propsListReq.iTemplateType = HUYA.EClientTemplateType.TPL_MIRROR;
-    } else {
-      propsListReq.iTemplateType = HUYA.EClientTemplateType.TPL_PC;
-    }
-    propsListReq.sVersion = '';
-    this.socket.sendWup('PropsUIServer', 'getPropsList', propsListReq);
+    // let propsListReq = new HUYA.GetPropsListReq();
+    // propsListReq.tUserId = this.userId;
+    // propsListReq.sMd5 = '';
+    // if (this.isYanzhi) {
+    //   propsListReq.iTemplateType = HUYA.EClientTemplateType.TPL_MIRROR;
+    // } else {
+    //   propsListReq.iTemplateType = HUYA.EClientTemplateType.TPL_PC;
+    // }
+    // propsListReq.sVersion = '';
+    // this.socket.sendWup('PropsUIServer', 'getPropsList', propsListReq);
     this.socket.addListener('rawdata', this.clientDataHandler);
+
+    // // 获取 game数据
+    // let e = new HUYA.GetGameInfoListReq;
+    // e.tId = this.userId,
+    // e.lTopSid = this.roomInfo.topsid,
+    // e.lSubSid = this.roomInfo.subsid,
+    // e.lPid =  this.roomInfo.yyuid;
+    // console.log(e);
+    // this.socket.sendWup("gameui", "getGameInfo", e, function(t){
+    //   console.log("gameinfo:");
+    //   console.log(t);
+    // })
+
+    // var r = new HUYA.GetRemainBeanNumReq;
+    // r.tId = this.userId,
+    // r.lTopSid = this.roomInfo.topsid,
+    // r.lSubSid = this.roomInfo.subsid,
+    // r.lPid = this.roomInfo.yyuid;
+    // // r.iUnitId = e,
+    // // r.iBetOdds = i,
+    // this.socket.sendWup("gameui", "getRemainBeanNum", r, function() {
+    //   console.log("getRemainBeanNum:");
+    //   console.log(t);
+    // });
+
+
+
     this.emit('connect');
   }
 

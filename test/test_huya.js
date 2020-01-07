@@ -4,14 +4,21 @@
  */
 
 const Huya = require('../danmu/Huya');
-let huya = new Huya('http://www.huya.com/11710691');
+let huya = new Huya('http://www.huya.com/131499');
 
 huya.on('connect', () => {
   console.log('connect');
 });
 
 huya.on('data', (data) => {
-  console.log(data)
+	console.log("========:"+ data[0].cmd);
+	if(data[0].cmd == 'getGameInfo') {
+		console.log(JSON.stringify(data));
+	}
+	if(data[0].cmd == 'getRemainBeanNum') {
+		console.log(data);
+	}
+  //console.log(data[0].cmd)
 });
 
 huya.on('error', (err) => {

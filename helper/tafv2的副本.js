@@ -9804,5 +9804,5 @@ function TafHandler() {
       w.close();
     });
 }
-//HUYA.TafHandler = TafHandler;
+HUYA.TafHandler = TafHandler;
 module.exports = {HUYA:HUYA, TafHandler:TafHandler};
